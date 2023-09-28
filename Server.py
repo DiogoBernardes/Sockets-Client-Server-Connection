@@ -1,4 +1,29 @@
-import socket 
+import socket
+import threading
+
+def handle_client(client_socket, client_address):
+    #Após a conexão ser realizada, vamos realizar uma chamada à função "recv" do objeto client_socket, para que possamos receber dados do socket do cliente
+    #Após recebermos os dados do cliente na variável "request", vamos então utilizar a função "decode" para que possamos passar os dados de bytes para uma string
+    #Por último, caso o cliente envie a mensagem "close", será enviada uma mensagem de confirmação de encerramento ao cliente através da função "send" 
+    # e a conexão será encerrada de seguida, caso contrário irá ser imprimida a mensagem enviada pelo cliente.
+    while True:
+        request = client_socket.recv(1024)
+        request = request.decode("utf-8")
+        
+        if request.lower() == "close":
+            client_socket.send ("closed".encode("utf-8"))
+            break
+        print(f"Received: {request}")
+        
+        #Para informarmos o cliente de que o servidor recebeu a mensagem enviada pelo mesmo, criamos uma variavel response,que guardará a resposta por parte do servidor em bytes
+        # e de seguida enviamos a mensagem ao cliente novamente através da função "send"
+        response = "Message received".encode("utf-8")
+        client_socket.send(response)
+        
+        #Após terminarmos a comunicação com o cliente, vamos então fechar o Socket do cliente utilizando a função "close", para que assim consigamos libtertar recursos do sistema.
+        #Para além disso, neste exemplo iremos encerrar também o servidor, embora num contexto real dificilmente isso aconteceria, pois iriamos continuar a espera que mais clientes se conectassem.
+    client_socket.close()
+    print(f"Connection to client ({client_address[0]}:{client_address[1]}) closed")
 
 #Função que vai conter a maioria do nosso código
 def run_server():
@@ -29,32 +54,12 @@ def run_server():
     #para isso utilizamos a função "accept" que e responsável por ficar à espera que algum cliente se conecte
     #após isso acontecer, esta função retorna dois valores, sendo eles um novo objeto Socket que representa a conexão com o cliente
     #e o IP e a Porta do cliente.
-    client_socket, client_adress = server.accept()
-    print(f"Connected to {client_adress[0]}:{client_adress[1]}")
-    
-    #Aoós a conexão ser realizada, vamos realizar uma chamada à função "recv" do objeto client_socket, para que possamos receber dados do socket do cliente
-    #Após recebermos os dados do cliente na variável "request", vamos então utilizar a função "decode" para que possamos passar os dados de bytes para uma string
-    #Por último, caso o cliente envie a mensagem "close", será enviada uma mensagem de confirmação de encerramento ao cliente através da função "send" 
-    # e a conexão será encerrada de seguida, caso contrário irá ser imprimida a mensagem enviada pelo cliente.
     while True:
-        request = client_socket.recv(1024)
-        request = request.decode("utf-8")
-        
-        if request.lower() == "close":
-            client_socket.send ("closed".encode("utf-8"))
-            break
-        print(f"Received: {request}")
-        
-        #Para informarmos o cliente de que o servidor recebeu a mensagem enviada pelo mesmo, criamos uma variavel response,que guardará a resposta por parte do servidor em bytes
-        # e de seguida enviamos a mensagem ao cliente novamente através da função "send"
-        response = "Message received".encode("utf-8")
-        client_socket.send(response)
-        
-        #Após terminarmos a comunicação com o cliente, vamos então fechar o Socket do cliente utilizando a função "close", para que assim consigamos libtertar recursos do sistema.
-        #Para além disso, neste exemplo iremos encerrar também o servidor, embora num contexto real dificilmente isso aconteceria, pois iriamos continuar a espera que mais clientes se conectassem.
-    client_socket.close()
-    print("Connection to client closed")
-    server.close()
+        client_socket, client_address = server.accept()
+        print(f"Connected to {client_address[0]}:{client_address[1]}")
+        # Criando uma nova thread para lidar com o cliente
+        client_handler = threading.Thread(target=handle_client, args=(client_socket, client_address))
+        client_handler.start()  # Iniciando a thread
         
 #Por ultimo, para que o servidor funcione não nos podemos esquecer de chamar a função "run_server"
 run_server()
