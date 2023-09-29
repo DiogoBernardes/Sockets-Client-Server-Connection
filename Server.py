@@ -4,26 +4,27 @@ import threading
 def handle_client(client_socket, client_address):
     #Após a conexão ser realizada, vamos realizar uma chamada à função "recv" do objeto client_socket, para que possamos receber dados do socket do cliente
     #Após recebermos os dados do cliente na variável "request", vamos então utilizar a função "decode" para que possamos passar os dados de bytes para uma string
-    #Por último, caso o cliente envie a mensagem "close", será enviada uma mensagem de confirmação de encerramento ao cliente através da função "send" 
     # e a conexão será encerrada de seguida, caso contrário irá ser imprimida a mensagem enviada pelo cliente.
-    while True:
-        request = client_socket.recv(1024)
-        request = request.decode("utf-8")
-        
-        if request.lower() == "close":
-            client_socket.send ("closed".encode("utf-8"))
-            break
-        print(f"Received: {request}")
-        
-        #Para informarmos o cliente de que o servidor recebeu a mensagem enviada pelo mesmo, criamos uma variavel response,que guardará a resposta por parte do servidor em bytes
-        # e de seguida enviamos a mensagem ao cliente novamente através da função "send"
-        response = "Message received".encode("utf-8")
-        client_socket.send(response)
-        
-        #Após terminarmos a comunicação com o cliente, vamos então fechar o Socket do cliente utilizando a função "close", para que assim consigamos libtertar recursos do sistema.
-        #Para além disso, neste exemplo iremos encerrar também o servidor, embora num contexto real dificilmente isso aconteceria, pois iriamos continuar a espera que mais clientes se conectassem.
-    client_socket.close()
-    print(f"Connection to client ({client_address[0]}:{client_address[1]}) closed")
+    try:
+        while True:
+            request = client_socket.recv(1024)
+            if not request:
+                break
+            
+            request = request.decode("utf-8")
+            
+            print(f"Received from: ({client_address[0]}:{client_address[1]}): {request}")
+            
+            #Para informarmos o cliente de que o servidor recebeu a mensagem enviada pelo mesmo, criamos uma variavel response,que guardará a resposta por parte do servidor em bytes
+            # e de seguida enviamos a mensagem ao cliente novamente através da função "send"
+            response = "Message received".encode("utf-8")
+            client_socket.send(response)
+            
+    except ConnectionResetError:
+        print(f"Connection to {client_address[0]}:{client_address[1]} has been lost.")
+    finally:
+        client_socket.close()
+        print(f"Connection to client ({client_address[0]}:{client_address[1]}) closed")
 
 #Função que vai conter a maioria do nosso código
 def run_server():
