@@ -1,66 +1,79 @@
 import socket
 import threading
+import os
 
-def handle_client(client_socket, client_address):
-    #Após a conexão ser realizada, vamos realizar uma chamada à função "recv" do objeto client_socket, para que possamos receber dados do socket do cliente
-    #Após recebermos os dados do cliente na variável "request", vamos então utilizar a função "decode" para que possamos passar os dados de bytes para uma string
-    # e a conexão será encerrada de seguida, caso contrário irá ser imprimida a mensagem enviada pelo cliente.
+def handle_client(client_socket, client_address, client_name):
     try:
         while True:
-            request = client_socket.recv(1024)
+            request = client_socket.recv(1024).decode("utf-8")
+        
             if not request:
                 break
-            
-            request = request.decode("utf-8")
-            
-            print(f"Received from: ({client_address[0]}:{client_address[1]}): {request}")
-            
-            #Para informarmos o cliente de que o servidor recebeu a mensagem enviada pelo mesmo, criamos uma variavel response,que guardará a resposta por parte do servidor em bytes
-            # e de seguida enviamos a mensagem ao cliente novamente através da função "send"
-            response = "Message received".encode("utf-8")
-            client_socket.send(response)
-            
+                
+            if request == "message":  # Verifica o request
+                message = client_socket.recv(1024).decode("utf-8")
+                
+                if message == "":
+                    print(f"The message sent by client {client_name} is empty")
+                else:
+                    # Divida a mensagem em nome e conteúdo
+                    parts = message.split(" - ")
+                    if len(parts) == 2:
+                        client_name = parts[0]
+                        message_content = parts[1]
+                        print(f"Received from client {client_name}({client_address[0]}:{client_address[1]}): {message_content}")
+                        response = "Server: Message received".encode("utf-8")
+                        client_socket.send(response)
+                    else:
+                        print(f"Invalid message format from client {client_name}: {message}")
+
+            elif request.startswith("calculate:"):
+                expression = request.split("calculate:")[1]
+                try:
+                    result = str(eval(expression))
+                    client_socket.send(f"Result: {result}".encode("utf-8"))
+
+                    print(f"Received from client: {client_name}({client_address[0]}:{client_address[1]}): {request}")
+                    print(f"The result of the operation made by client {client_name} was: {result}".encode("utf-8"))
+                except Exception as e:
+                    client_socket.send(f"Error: {str(e)}".encode("utf-8"))
+
+            elif request == "Close session":
+                print(f"Connection to {client_name}({client_address[0]}:{client_address[1]}) has been lost.")
+                client_socket.close()
+                break
+                
+            else:
+                print(f"Invalid request from client {client_name}: {request}")
+
+           
     except ConnectionResetError:
-        print(f"Connection to {client_address[0]}:{client_address[1]} has been lost.")
+        print(f"Connection to {client_name}({client_address[0]}:{client_address[1]}) has been lost.")
     finally:
         client_socket.close()
-        print(f"Connection to client ({client_address[0]}:{client_address[1]}) closed")
 
-#Função que vai conter a maioria do nosso código
+
 def run_server():
     
-    #De seguida é criado um objeto do Socket através da função socket.socket()
-    #O primeiro parâmetro(socket.AF_INET) é o endereço da família do protocolo, neste caso o IPv4
-    #O segundo parâmetro(socket.SOCK_STREAM) é o tipo de socket, neste caso o TCP
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    #Posto isto, vamos vincular o Socket do servidor a um endereço de IP e a uma Porta
-    #Como o servidor está hospedado na máquina local, iremos utilizar o IP associado ao localhost, que é o 127.0.0.1
-    #Quanto à porta, definimos a porta 8000 que será através dela que o sistema operacional irá identificar a aplicação do servidor.
     server_ip = "127.0.0.1"
     port = 8000
-    
-    #Após criarmos as variaveis com o IP e a  porta, vamos agora preparar o socket para receber conexões,
-    #para isso utilizamos a função "bind" que é responsãvel por associar o Socket a um IP e a uma Porta
+
     server.bind((server_ip, port))
-    
-    #De seguida, vamos especificar que o servidor apenas estará a conectado a um cliente de cada vez
-    #Para isso utilizamos a função "Listen" que é responsável por escutar as conexões de entrada no Socket e para que o servidor apenas se conecte a um cliente
-    #vamos utilizar o valor "0", pois se espeficicarmos um valor maior, esse valor será o número de conexões pendentes que o servidor poderá ter para serem aceites
-    server.listen(0)
+    server.listen(1)
+
+    os.system("cls")
+    print(f"Welcome to the server!")
     print(f"Listening on IP: {server_ip}")
     print(f"Listening on Port: {port}")
     
-    #Após especificarmos o IP e a porta, vamos agora aceitar as conexões entre servidor e cliente,
-    #para isso utilizamos a função "accept" que e responsável por ficar à espera que algum cliente se conecte
-    #após isso acontecer, esta função retorna dois valores, sendo eles um novo objeto Socket que representa a conexão com o cliente
-    #e o IP e a Porta do cliente.
     while True:
+    
         client_socket, client_address = server.accept()
-        print(f"Connected to {client_address[0]}:{client_address[1]}")
-        # Criando uma nova thread para lidar com o cliente
-        client_handler = threading.Thread(target=handle_client, args=(client_socket, client_address))
-        client_handler.start()  # Iniciando a thread
-        
-#Por ultimo, para que o servidor funcione não nos podemos esquecer de chamar a função "run_server"
+        client_name = client_socket.recv(1024).decode("utf-8")
+        print(f"Connected to {client_name} with the Adress:{client_address[0]}:{client_address[1]}")
+
+        client_handler = threading.Thread(target=handle_client, args=(client_socket, client_address, client_name))
+        client_handler.start() 
+
 run_server()
