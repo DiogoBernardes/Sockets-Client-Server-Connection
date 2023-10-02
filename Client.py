@@ -1,6 +1,20 @@
 import socket
 import os
+import threading
 
+in_chat = False
+
+def receive_messages(client_socket):
+    global in_chat
+    while True:
+        try:
+            message = client_socket.recv(1024).decode("utf-8")
+            if in_chat:
+                print(message)
+        except:
+            print("Connection lost.")
+            break
+        
 def run_client():
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
@@ -17,11 +31,14 @@ def run_client():
     client_name = input("What is your name? ")
     client.send(client_name.encode("utf-8"))
     
+    global in_chat
+    
     while True:
         os.system('cls')
         print('1 - Send message')
         print('2 - Calculator')
-        print('3 - Quit')
+        print('3 - Chat Room')
+        print('4 - Quit')
         
         opt = int(input('Choose an option:'))
         
@@ -59,6 +76,24 @@ def run_client():
                     print(f"Something went wrong: {response}".encode("utf-8"))
                     
         elif opt == 3:
+            os.system('cls')
+            in_chat = True
+            if in_chat:
+                client.send("Enter chat".encode("utf-8")) 
+                print("You entered the chat. Type 'close' to leave the chat.")
+                receive_thread = threading.Thread(target=receive_messages, args=(client,))
+                receive_thread.start()
+                while True:
+                    message = input()
+                    if message.lower() == "close":
+                        client.send("Leave chat".encode("utf-8")) 
+                        in_chat = False
+                        print("You left the chat.")
+                        break
+                    else:
+                        client.send(message.encode("utf-8")) 
+                   
+        elif opt == 4:
             os.system('cls')
             print("Do you really want to close session?(yes/no)")
             answer = input()
