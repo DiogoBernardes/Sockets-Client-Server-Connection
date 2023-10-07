@@ -6,7 +6,7 @@ in_chat = False
 
 def receive_messages(client_socket):
     global in_chat
-    while True:
+    while in_chat:
         try:
             message = client_socket.recv(1024).decode("utf-8")
             if in_chat:
@@ -35,30 +35,17 @@ def run_client():
     
     while True:
         os.system('cls')
-        print('1 - Send message')
-        print('2 - Calculator')
-        print('3 - Chat Room')
+        print('1 - Calculator')
+        print('2 - Chat Room')
+        print('3 - List Clients Connected')
         print('4 - Quit')
         
         opt = int(input('Choose an option:'))
         
         if opt == 1:
-            os.system("cls")
-            while True:
-                print(f"Write a message (if u want to go back to menu type 'close'):")
-                message = input()
-                
-                if message.lower() == "close":
-                    break
-                
-                client.send("message".encode("utf-8")) 
-                client.send(f"{client_name} - {message}".encode("utf-8"))
-                response = client.recv(1024).decode("utf-8")
-                print(response)
-
-        elif opt == 2:
             os.system('cls')
-            while True:
+            while not in_chat:
+                os.system('cls')
                 print("Write the mathematic expression u want to do (if u want to go back to menu type 'close'): ")
                 expression = input()
 
@@ -72,27 +59,37 @@ def run_client():
                     os.system('cls')
                     result = response[len("Result: "):]
                     print(f"The result of the expression is: {result}".encode("utf-8"))
+                    input("Press Enter to continue...")
+                    
                 else:
                     print(f"Something went wrong: {response}".encode("utf-8"))
                     
+        elif opt == 2:
+            os.system('cls')
+            client.send("Enter chat".encode("utf-8")) 
+            print("You entered the chat. Type 'close' to leave the chat.")
+            in_chat = True
+            while True:
+                message = input()
+                if message.lower() == "close":
+                    client.send("Leave chat".encode("utf-8")) 
+                    print("You left the chat.")
+                    in_chat = False
+                    break
+                else:
+                    receive_thread = threading.Thread(target=receive_messages, args=(client,))
+                    receive_thread.start()
+                    client.send(message.encode("utf-8")) 
+
+         # Adicione a opção para listar clientes conectados (opção 4)
         elif opt == 3:
             os.system('cls')
-            in_chat = True
-            if in_chat:
-                client.send("Enter chat".encode("utf-8")) 
-                print("You entered the chat. Type 'close' to leave the chat.")
-                receive_thread = threading.Thread(target=receive_messages, args=(client,))
-                receive_thread.start()
-                while True:
-                    message = input()
-                    if message.lower() == "close":
-                        client.send("Leave chat".encode("utf-8")) 
-                        in_chat = False
-                        print("You left the chat.")
-                        break
-                    else:
-                        client.send(message.encode("utf-8")) 
-                   
+            client.send("Request client list".encode("utf-8"))
+            response = client.recv(1024).decode("utf-8")
+            print("Connected clients:\n")
+            print(response)
+            input("\nPress Enter to continue...")
+                       
         elif opt == 4:
             os.system('cls')
             print("Do you really want to close session?(yes/no)")
