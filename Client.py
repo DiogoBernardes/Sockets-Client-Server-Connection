@@ -9,11 +9,19 @@ def receive_messages(client_socket):
     while in_chat:
         try:
             message = client_socket.recv(1024).decode("utf-8")
-            if in_chat:
+            if not message:
+                in_chat = False
+                print("\nConnection lost.")
+                break
+            if message == "Leave chat": 
+                in_chat = False
+            else:
                 print(message)
         except:
-            print("Connection lost.")
+            in_chat = False
+            print("\nConnection lost.")
             break
+
         
 def run_client():
 
@@ -66,22 +74,22 @@ def run_client():
                     
         elif opt == 2:
             os.system('cls')
-            client.send("Enter chat".encode("utf-8")) 
+            client.send("Enter chat".encode("utf-8"))
             print("You entered the chat. Type 'close' to leave the chat.")
             in_chat = True
-            while True:
+            receive_thread = threading.Thread(target=receive_messages, args=(client,))
+            receive_thread.start()
+            while in_chat:
                 message = input()
                 if message.lower() == "close":
-                    client.send("Leave chat".encode("utf-8")) 
+                    client.send("Leave chat".encode("utf-8"))
                     print("You left the chat.")
                     in_chat = False
-                    break
+                    receive_thread.join()
                 else:
-                    receive_thread = threading.Thread(target=receive_messages, args=(client,))
-                    receive_thread.start()
-                    client.send(message.encode("utf-8")) 
+                    client.send(message.encode("utf-8"))
 
-         # Adicione a opção para listar clientes conectados (opção 4)
+
         elif opt == 3:
             os.system('cls')
             client.send("Request client list".encode("utf-8"))

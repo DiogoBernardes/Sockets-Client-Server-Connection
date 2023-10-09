@@ -43,7 +43,9 @@ def handle_client(client_socket, client_address, client_name):
                         print(f"{client_name} left the chat.")
                         chat_clients.pop(client_name, None)
                         print(f"Current chat clients after removal: {len(chat_clients)}")
+                        client_socket.send("Leave chat".encode("utf-8"))
                         break
+
                             
                     broadcast(f"{client_name}: {message}")
                     print(f"Received from client {client_name}({client_address[0]}:{client_address[1]}): {message}")
@@ -94,7 +96,7 @@ def remove(client_socket):
             connected_clients.remove(client)
 
 def remove_history_file(client_name):
-    # Remova o arquivo de histórico se existir
+    #Remove o arquivo se existir
     history_file = f"{client_name}_history.txt"
     if os.path.exists(history_file):
         os.remove(history_file)
