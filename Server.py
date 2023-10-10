@@ -41,12 +41,11 @@ def handle_client(client_socket, client_address, client_name):
 
                     if not message or message == "close" or message == "Leave chat":
                         print(f"{client_name} left the chat.")
-                        chat_clients.pop(client_name, None)
-                        print(f"Current chat clients after removal: {len(chat_clients)}")
                         client_socket.send("Leave chat".encode("utf-8"))
                         break
 
-                            
+                    save_message_to_history(client_name, f"{client_name}: {message}")
+
                     broadcast(f"{client_name}: {message}")
                     print(f"Received from client {client_name}({client_address[0]}:{client_address[1]}): {message}")
 
@@ -61,6 +60,8 @@ def handle_client(client_socket, client_address, client_name):
                 print(f"Connection to {client_name}({client_address[0]}:{client_address[1]}) has been lost.")
                 client_socket.close()
                 connected_clients.remove((client_name, client_socket))
+                chat_clients.pop(client_name, None)
+                print(f"Current chat clients after removal: {len(chat_clients)}")
                 remove_history_file(client_name)
                 break
                 
@@ -73,20 +74,22 @@ def handle_client(client_socket, client_address, client_name):
         connected_clients.remove((client_name, client_socket))
         remove_history_file(client_name)
     finally:
-        connected_clients.remove((client_name, client_socket))
         remove_history_file(client_name)
         client_socket.close()
+
+def save_message_to_history(client_name, message):
+    history_file = f"{client_name}_history.txt"
+    with open(history_file, "a") as f:
+        f.write(message + "\n")
 
 def broadcast(message):
     print(f"Broadcasting: {message}")
     for client_name, client_socket in chat_clients.items():
         try:
+            save_message_to_history(client_name, message)
+
             client_socket.send(message.encode("utf-8"))
-            
-            # Adicione a mensagem ao arquivo de histórico do cliente
-            history_file = f"{client_name}_history.txt"
-            with open(history_file, "a") as f:
-                f.write(message + "\n")
+
         except:
             chat_clients.pop(client_name, None)
             
